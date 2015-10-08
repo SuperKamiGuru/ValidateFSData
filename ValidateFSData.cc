@@ -514,6 +514,14 @@ double CalcDiff(string outFileName, VFDNeutronHPFinalState *isoFSDataG4NDL, std:
     }
     stream << '\n' << endl;
 
+    for(int i=0; i<incEnerSize; i++)
+    {
+        stream << std::setw(14) << std::right << incEnerVec[i];
+        if(((i+1)%6==0)||(i==incEnerSize-1))
+            stream << '\n';
+    }
+    stream << '\n' << endl;
+
     SetDataStream( outFileName, stream, true);
 
 

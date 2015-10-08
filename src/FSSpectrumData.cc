@@ -260,27 +260,26 @@ double FSSpectrumData::CompareHist(std::stringstream &stream, std::vector<double
         }
     }
 
+    for(int j=0; j<numBins+1; j++)
+    {
+        stream << std::setw(14) << std::right << binBounds[j];
+        if(((j+1)%6==0)||(j==numBins))
+            stream << '\n' << std::endl;
+    }
+
     stream << "G4NDL Hist" << std::endl;
     for(int j=0; j<numBins; j++)
     {
-        stream << std::setw(14) << std::right << binBounds[j] << std::setw(14) << std::right << g4ndlHist[j];
-        if(j==numBins-1)
-        {
-            stream << std::setw(14) << std::right << binBounds[numBins];
-        }
-        if(((j+1)%3==0)||(j==numBins-1))
+        stream << std::setw(14) << std::right << g4ndlHist[j];
+        if(((j+1)%6==0)||(j==numBins-1))
             stream << '\n';
     }
 
     stream << "MCNP Hist" << std::endl;
     for(int j=0; j<numBins; j++)
     {
-        stream << std::setw(14) << std::right << binBounds[j] << std::setw(14) << std::right << mcnpHist[j];
-        if(j==numBins-1)
-        {
-            stream << std::setw(14) << std::right << binBounds[numBins];
-        }
-        if(((j+1)%3==0)||(j==numBins-1))
+        stream << std::setw(14) << std::right << mcnpHist[j];
+        if(((j+1)%6==0)||(j==numBins-1))
             stream << '\n';
     }
 
@@ -289,12 +288,8 @@ double FSSpectrumData::CompareHist(std::stringstream &stream, std::vector<double
     {
         diffHist[j] = std::pow(mcnpHist[j]-g4ndlHist[j],2);
         sumDiff+=diffHist[j];
-        stream << std::setw(14) << std::right << binBounds[j] << std::setw(14) << std::right << diffHist[j];
-        if(j==numBins-1)
-        {
-            stream << std::setw(14) << std::right << binBounds[numBins];
-        }
-        if(((j+1)%3==0)||(j==numBins-1))
+        stream << std::setw(14) << std::right << diffHist[j];
+        if(((j+1)%6==0)||(j==numBins-1))
             stream << '\n';
     }
 
