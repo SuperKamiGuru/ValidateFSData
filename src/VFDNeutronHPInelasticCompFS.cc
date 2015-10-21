@@ -43,7 +43,8 @@
 // 101111 add safty for _nat_ data case in Binary reaction, but break conservation
 // 110430 add Reaction Q value and break up flag (MF3::QI and LR)
 //
-#include "../include/VFDNeutronHPInelasticCompFS.hh"
+#include "VFDNeutronHPInelasticCompFS.hh"
+#include "G4NeutronHPManager.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Nucleus.hh"
@@ -52,7 +53,7 @@
 #include "G4Alpha.hh"
 #include "G4Electron.hh"
 #include "G4NeutronHPDataUsed.hh"
-#include "G4ParticleTable.hh"
+#include "G4IonTable.hh"
 
 void VFDNeutronHPInelasticCompFS::InitGammas(G4double AR, G4double ZR)
 {
@@ -102,13 +103,15 @@ void VFDNeutronHPInelasticCompFS::Init (G4double A, G4double Z, G4int M, G4Strin
   }
   //theBaseA = A;
   //theBaseZ = G4int(Z+.5);
-  std::ifstream theData(filename, std::ios::in);
-  if(!theData)
+   //std::ifstream theData(filename, std::ios::in);
+   std::istringstream theData(std::ios::in);
+   G4NeutronHPManager::GetInstance()->GetDataStream(filename,theData);
+  if(!theData) //"!" is a operator of ios
   {
     hasAnyData = false;
     hasFSData = false;
     hasXsec = false;
-    theData.close();
+    //theData.close();
     return;
   }
   // here we go
@@ -146,12 +149,12 @@ void VFDNeutronHPInelasticCompFS::Init (G4double A, G4double Z, G4int M, G4Strin
     }
     else if(dataType==5)
     {
-      theEnergyDistribution[it] = new G4NeutronHPEnergyDistribution;
+      theEnergyDistribution[it] = new VFDNeutronHPEnergyDistribution;
       theEnergyDistribution[it]->Init(theData);
     }
     else if(dataType==6)
     {
-      theEnergyAngData[it] = new VFDNeutronHPEnAngCorrelation;
+      theEnergyAngData[it] = new G4NeutronHPEnAngCorrelation;
       theEnergyAngData[it]->Init(theData);
     }
     else if(dataType==12)
@@ -177,7 +180,7 @@ void VFDNeutronHPInelasticCompFS::Init (G4double A, G4double Z, G4int M, G4Strin
       throw G4HadronicException(__FILE__, __LINE__, "Data-type unknown to VFDNeutronHPInelasticCompFS");
     }
   }
-  theData.close();
+  //theData.close();
 }
 
 G4int VFDNeutronHPInelasticCompFS::SelectExitChannel(G4double eKinetic)
@@ -216,12 +219,11 @@ G4int VFDNeutronHPInelasticCompFS::SelectExitChannel(G4double eKinetic)
 void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrack, G4ParticleDefinition * aDefinition)
 {
 
-    IsotopeMass *isoMass;
 // prepare neutron
     theResult.Clear();
     G4double eKinetic = theTrack.GetKineticEnergy();
     const G4HadProjectile *incidentParticle = &theTrack;
-    G4ReactionProduct theNeutron( const_cast<G4ParticleDefinition *>(incidentParticle->GetDefinition()) );
+    G4ReactionProduct theNeutron( const_cast<G4ParticleDefinition *>( incidentParticle->GetDefinition() ) );
     theNeutron.SetMomentum( incidentParticle->Get4Momentum().vect() );
     theNeutron.SetKineticEnergy( eKinetic );
 
@@ -319,13 +321,13 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
 	*/
 	//************************************************************
 	//EMendoza --> maximum allowable energy should be taken into account.
-        //G4double dqi = 0.0;
-        //if ( QI[it] < 0 || 849 < QI[it] ) dqi = QI[it]; //For backword compatibility QI introduced since G4NDL3.15
-	//G4double MaxEne=eKinetic+dqi;
+//        G4double dqi = 0.0;
+//        if ( QI[it] < 0 || 849 < QI[it] ) dqi = QI[it]; //For backword compatibility QI introduced since G4NDL3.15
+//	G4double MaxEne=eKinetic+dqi;
 	G4double eSecN;
-	//do{
+//	do{
 	  eSecN=theEnergyDistribution[it]->Sample(eKinetic, dummy);
-	//}while(eSecN>MaxEne);
+//	}while(eSecN>MaxEne);
 	aHadron.SetKineticEnergy(eSecN);
 	//************************************************************
         eGamm = eKinetic-eSecN;
@@ -360,7 +362,7 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
            iLevel = 0;
            G4bool find = false;
            G4int imaxEx = 0;
-           while( !theGammas.GetLevel(iLevel+1) == 0 )
+           while ( theGammas.GetLevel(iLevel+1) != 0 )
            {
               G4double maxEx = 0.0;
               if ( maxEx < theGammas.GetLevel(iLevel)->GetLevelEnergy() )
@@ -396,22 +398,22 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
       if( theFinalStatePhotons[it] == 0 )
       {
         //G4cout << "110610 USE Gamma Level" << G4endl;
-// TK comment Most n,n* eneter to this
-	thePhotons = theGammas.GetDecayGammas(iLevel);
-	eGamm -= theGammas.GetLevelEnergy(iLevel);
-	if(eGamm>0) // @ ok for now, but really needs an efficient way of correllated sampling @
-	{
-          G4ReactionProduct * theRestEnergy = new G4ReactionProduct;
-          theRestEnergy->SetDefinition(G4Gamma::Gamma());
-          theRestEnergy->SetKineticEnergy(eGamm);
-          G4double costh = 2.*G4UniformRand()-1.;
-          G4double phi = twopi*G4UniformRand();
-          theRestEnergy->SetMomentum(eGamm*std::sin(std::acos(costh))*std::cos(phi),
-                                     eGamm*std::sin(std::acos(costh))*std::sin(phi),
-                                     eGamm*costh);
-          if(thePhotons == 0) { thePhotons = new G4ReactionProductVector; }
-          thePhotons->push_back(theRestEnergy);
-	}
+        // TK comment Most n,n* eneter to this
+        thePhotons = theGammas.GetDecayGammas(iLevel);
+        eGamm -= theGammas.GetLevelEnergy(iLevel);
+        if(eGamm>0) // @ ok for now, but really needs an efficient way of correllated sampling @
+        {
+              G4ReactionProduct * theRestEnergy = new G4ReactionProduct;
+              theRestEnergy->SetDefinition(G4Gamma::Gamma());
+              theRestEnergy->SetKineticEnergy(eGamm);
+              G4double costh = 2.*G4UniformRand()-1.;
+              G4double phi = twopi*G4UniformRand();
+              theRestEnergy->SetMomentum(eGamm*std::sin(std::acos(costh))*std::cos(phi),
+                                         eGamm*std::sin(std::acos(costh))*std::sin(phi),
+                                         eGamm*costh);
+              if(thePhotons == 0) { thePhotons = new G4ReactionProductVector; }
+              thePhotons->push_back(theRestEnergy);
+        }
       }
     }
     else if(theEnergyAngData[it] != 0) // MF6
@@ -525,10 +527,10 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
       G4LorentzVector proj_in_LAB = incidentParticle->Get4Momentum();
 
       G4DynamicParticle* proj = new G4DynamicParticle( G4Neutron::Neutron() , proj_in_LAB.boost( boostToTargetRest ) );
-      //G4DynamicParticle* targ = new G4DynamicParticle( G4ParticleTable::GetParticleTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , totalPhotonEnergy )  , G4ThreeVector(0) );
+      G4DynamicParticle* targ = new G4DynamicParticle( G4IonTable::GetIonTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , totalPhotonEnergy )  , G4ThreeVector(0) );
       G4DynamicParticle* hadron = new G4DynamicParticle( aHadron.GetDefinition() , G4ThreeVector(0) );  // will be fill momentum
 
-      two_body_reaction ( proj, totalPhotonEnergy, hadron, theBaseZ-residualZ, theBaseA-residualA, mu );
+      two_body_reaction ( proj , targ , hadron , mu );
 
       G4LorentzVector hadron_in_trag_rest = hadron->Get4Momentum();
       G4LorentzVector hadron_in_LAB = hadron_in_trag_rest.boost ( -boostToTargetRest );
@@ -536,7 +538,7 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
       aHadron.SetKineticEnergy ( hadron_in_LAB.e() - hadron_in_LAB.m() );
 
       delete proj;
-      //delete targ;
+      delete targ;
       delete hadron;
 
 //TKDB 100405
@@ -623,7 +625,7 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
 
  	aHadron.Lorentz(aHadron, theTarget);
 //        G4ReactionProduct theResidual;
-//        theResidual.SetDefinition(G4ParticleTable::GetParticleTable()
+//        theResidual.SetDefinition(G4IonTable::GetIonTable()
 //	                          ->GetIon(static_cast<G4int>(residualZ), static_cast<G4int>(residualA), 0));
 //        theResidual.SetKineticEnergy(aHadron.GetKineticEnergy()*aHadron.GetMass()/theResidual.GetMass());
 //
@@ -660,12 +662,12 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
       if(needsSeparateRecoil && residualZ!=0)
       {
 //        G4ReactionProduct theResidual;
-//        theResidual.SetDefinition(G4ParticleTable::GetParticleTable()
+//        theResidual.SetDefinition(G4IonTable::GetIonTable()
 //	                          ->GetIon(static_cast<G4int>(residualZ), static_cast<G4int>(residualA), 0));
 //        G4double resiualKineticEnergy  = theResidual.GetMass()*theResidual.GetMass();
 //                 resiualKineticEnergy += totalMomentum*totalMomentum;
 //  	         resiualKineticEnergy  = std::sqrt(resiualKineticEnergy) - theResidual.GetMass();
-////        cout << "Kinetic energy of the residual = "<<resiualKineticEnergy<<std::endl;
+////        cout << "Kinetic energy of the residual = "<<resiualKineticEnergy<<endl;
 //	theResidual.SetKineticEnergy(resiualKineticEnergy);
 //
 //        //080612TK contribution from Benoit Pirard and Laurent Desorgher (Univ. Bern) #4
@@ -699,34 +701,27 @@ void VFDNeutronHPInelasticCompFS::CompositeApply(const G4HadProjectile & theTrac
     }
 
 //080721
-   //G4ParticleDefinition* targ_pd = G4ParticleTable::GetParticleTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
-   G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( std::pow(isoMass->GetIsotopeMassEnergy(theBaseZ, theBaseA), 2) + theTarget.GetMomentum().mag2() ) );
+   G4ParticleDefinition* targ_pd = G4IonTable::GetIonTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
+   G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( targ_pd->GetPDGMass()*targ_pd->GetPDGMass() + theTarget.GetMomentum().mag2() ) );
    G4LorentzVector proj_4p_lab = theTrack.Get4Momentum();
    G4LorentzVector init_4p_lab = proj_4p_lab + targ_4p_lab;
-   //adjust_final_state ( init_4p_lab );
+   adjust_final_state ( init_4p_lab );
 
 // clean up the primary neutron
     theResult.SetStatusChange(stopAndKill);
-
-//    for(int x=0; x<theResult.GetNumberOfSecondaries(); x++)
-//    {
-//        delete theResult.GetSecondary(x)->GetParticle();
-//    }
-//    theResult.Clear();
 }
 
 
 
 #include "G4RotationMatrix.hh"
-void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G4double totalPhotonEnergy, G4DynamicParticle* hadron, G4int hadZ, G4int hadA, G4double mu )
+void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G4DynamicParticle* targ, G4DynamicParticle* hadron, G4double mu )
 {
-    IsotopeMass *isoMass;
 
 // Target rest flame
 // 4vector in targ rest frame;
 // targ could have excitation energy (photon energy will be emiited) tricky but,,,
 
-   G4LorentzVector before = proj->Get4Momentum();
+   G4LorentzVector before = proj->Get4Momentum() + targ->Get4Momentum();
 
    G4ThreeVector p3_proj = proj->GetMomentum();
    G4ThreeVector d = p3_proj.unit();
@@ -743,14 +738,13 @@ void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G
 // mu in CM system
 
    //Valid only for neutron incidence
-//   G4DynamicParticle* residual = new G4DynamicParticle ( G4ParticleTable::GetParticleTable()->GetIon ( (G4int)( targ->GetDefinition()->GetPDGCharge() - hadron->GetDefinition()->GetPDGCharge() ) ,
-//                                                                        (G4int)(targ->GetDefinition()->GetBaryonNumber() - hadron->GetDefinition()->GetBaryonNumber()+1) , 0 ) , G4ThreeVector(0) );
+   G4DynamicParticle* residual = new G4DynamicParticle ( G4IonTable::GetIonTable()->GetIon ( (G4int)( targ->GetDefinition()->GetPDGCharge() - hadron->GetDefinition()->GetPDGCharge() ) , (G4int)(targ->GetDefinition()->GetBaryonNumber() - hadron->GetDefinition()->GetBaryonNumber()+1) , 0 ) , G4ThreeVector(0) );
 
-   G4double Q = proj->GetDefinition()->GetPDGMass() + isoMass->GetIsotopeMassEnergy(theBaseZ, theBaseA) + totalPhotonEnergy
-	      - ( hadron->GetDefinition()->GetPDGMass() + isoMass->EstimateIsotopeMassEnergy(theBaseZ-hadZ, theBaseA-hadA) );
+   G4double Q = proj->GetDefinition()->GetPDGMass() + targ->GetDefinition()->GetPDGMass()
+	      - ( hadron->GetDefinition()->GetPDGMass() + residual->GetDefinition()->GetPDGMass() );
 
    // Non Relativistic Case
-   G4double A = (isoMass->GetIsotopeMassEnergy(theBaseZ, theBaseA)+totalPhotonEnergy) / proj->GetDefinition()->GetPDGMass();
+   G4double A = targ->GetDefinition()->GetPDGMass() / proj->GetDefinition()->GetPDGMass();
    G4double AA = hadron->GetDefinition()->GetPDGMass() / proj->GetDefinition()->GetPDGMass();
    G4double E1 = proj->GetKineticEnergy();
 
@@ -779,7 +773,7 @@ void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G
    G4double pmag = std::sqrt ((E3+M)*(E3+M)-M*M) ;
    G4ThreeVector p ( 0 , pmag*std::sqrt(1-omega3*omega3), pmag*omega3 );
 
-   G4double M4 = isoMass->EstimateIsotopeMassEnergy(theBaseZ-hadZ, theBaseA-hadA);
+   G4double M4 = residual->GetDefinition()->GetPDGMass();
    G4double pmag4 = std::sqrt ((E4+M4)*(E4+M4)-M4*M4) ;
    G4ThreeVector p4 ( 0 , -pmag4*std::sqrt(1-omega4*omega4), pmag4*omega4 );
 
@@ -790,7 +784,7 @@ void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G
 
 // TypeA
    p4 *= rot.inverse();
-   //residual->SetMomentum ( p4 );
+   residual->SetMomentum ( p4 );
 
 //TypeB1
    //residual->Set4Momentum ( p4_residual );
@@ -801,6 +795,6 @@ void VFDNeutronHPInelasticCompFS::two_body_reaction ( G4DynamicParticle* proj, G
 // Type B1 make difference in Mass of residual
 // Type B2 make difference in total energy.
 
-   //delete residual;
+   delete residual;
 
 }

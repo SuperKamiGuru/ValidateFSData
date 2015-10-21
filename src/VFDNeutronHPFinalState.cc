@@ -28,7 +28,7 @@
 //080801 Residual reconstruction with theNDLDataA,Z (A, Z, and momentum are adjusted) by T. Koi
 //101110 Set lower limit for gamma energy(1keV) by T. Koi
 
-#include "../include/VFDNeutronHPFinalState.hh"
+#include "VFDNeutronHPFinalState.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4IonTable.hh"

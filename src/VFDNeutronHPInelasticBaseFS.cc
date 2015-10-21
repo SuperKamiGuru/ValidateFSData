@@ -32,7 +32,8 @@
 // 081024 G4NucleiPropertiesTable:: to G4NucleiProperties::
 // 101111 Add Special treatment for Be9(n,2n)Be8(2a) case by T. Koi
 //
-#include "../include/VFDNeutronHPInelasticBaseFS.hh"
+#include "VFDNeutronHPInelasticBaseFS.hh"
+#include "G4NeutronHPManager.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Nucleus.hh"
 #include "G4NucleiProperties.hh"
@@ -41,7 +42,7 @@
 #include "G4Electron.hh"
 #include "G4NeutronHPDataUsed.hh"
 
-#include "G4ParticleTable.hh"
+#include "G4IonTable.hh"
 
 void VFDNeutronHPInelasticBaseFS::InitGammas(G4double AR, G4double ZR)
 {
@@ -95,13 +96,17 @@ void VFDNeutronHPInelasticBaseFS::Init (G4double A, G4double Z, G4int M, G4Strin
   }
   //theBaseA = A;
   //theBaseZ = G4int(Z+.5);
-  std::ifstream theData(filename, std::ios::in);
-  if(!(theData))
+  //std::ifstream theData(filename, std::ios::in);
+   //130205 For compressed data files
+   std::istringstream theData(std::ios::in);
+   G4NeutronHPManager::GetInstance()->GetDataStream(filename,theData);
+   //130205 END
+  if(!theData) //"!" is a operator of ios
   {
     hasAnyData = false;
     hasFSData = false;
     hasXsec = false;
-    theData.close();
+    //theData.close();
     return; // no data for exactly this isotope and FS
   }
   // here we go
@@ -125,13 +130,13 @@ void VFDNeutronHPInelasticBaseFS::Init (G4double A, G4double Z, G4int M, G4Strin
     }
     else if(dataType==5)
     {
-      theEnergyDistribution = new G4NeutronHPEnergyDistribution;
+      theEnergyDistribution = new VFDNeutronHPEnergyDistribution;
       theEnergyDistribution->Init(theData);
       hasFSData = true;
     }
     else if(dataType==6)
     {
-      theEnergyAngData = new VFDNeutronHPEnAngCorrelation;
+      theEnergyAngData = new G4NeutronHPEnAngCorrelation;
       theEnergyAngData->Init(theData);
       hasFSData = true;
     }
@@ -162,19 +167,19 @@ void VFDNeutronHPInelasticBaseFS::Init (G4double A, G4double Z, G4int M, G4Strin
       throw G4HadronicException(__FILE__, __LINE__, "Data-type unknown to VFDNeutronHPInelasticBaseFS");
     }
   }
-  theData.close();
+  //theData.close();
 }
 
 void VFDNeutronHPInelasticBaseFS::BaseApply(const G4HadProjectile & theTrack,
                                            G4ParticleDefinition ** theDefs,
                                            G4int nDef)
 {
-    IsotopeMass *isoMass;
+
 // prepare neutron
   theResult.Clear();
   G4double eKinetic = theTrack.GetKineticEnergy();
   const G4HadProjectile *incidentParticle = &theTrack;
-  G4ReactionProduct theNeutron( const_cast<G4ParticleDefinition *>(incidentParticle->GetDefinition()) );
+  G4ReactionProduct theNeutron( const_cast<G4ParticleDefinition *>( incidentParticle->GetDefinition() ) );
   theNeutron.SetMomentum( incidentParticle->Get4Momentum().vect() );
   theNeutron.SetKineticEnergy( eKinetic );
 
@@ -239,11 +244,11 @@ void VFDNeutronHPInelasticBaseFS::BaseApply(const G4HadProjectile & theTrack,
 
     //TK120607
     //Final momentum check should be done before return
-//    G4ParticleDefinition* targ_pd = G4ParticleTable::GetParticleTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
-    G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( std::pow(isoMass->GetIsotopeMassEnergy(theBaseZ, theBaseA), 2) + theTarget.GetMomentum().mag2() ) );
+    G4ParticleDefinition* targ_pd = G4IonTable::GetIonTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
+    G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( targ_pd->GetPDGMass()*targ_pd->GetPDGMass() + theTarget.GetMomentum().mag2() ) );
     G4LorentzVector proj_4p_lab = theTrack.Get4Momentum();
     G4LorentzVector init_4p_lab = proj_4p_lab + targ_4p_lab;
-    //adjust_final_state ( init_4p_lab );
+    adjust_final_state ( init_4p_lab );
 
     return;
   }
@@ -505,19 +510,12 @@ if ( (G4int)(theBaseZ+eps) == 4 && (G4int)(theBaseA+eps) == 9 )
   delete tmpHadrons;
 
 //080721
-   //G4ParticleDefinition* targ_pd = G4ParticleTable::GetParticleTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
-   G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( std::pow(isoMass->GetIsotopeMassEnergy(theBaseZ, theBaseA), 2) + theTarget.GetMomentum().mag2() ) );
+   G4ParticleDefinition* targ_pd = G4IonTable::GetIonTable()->GetIon ( (G4int)theBaseZ , (G4int)theBaseA , 0.0 );
+   G4LorentzVector targ_4p_lab ( theTarget.GetMomentum() , std::sqrt( targ_pd->GetPDGMass()*targ_pd->GetPDGMass() + theTarget.GetMomentum().mag2() ) );
    G4LorentzVector proj_4p_lab = theTrack.Get4Momentum();
    G4LorentzVector init_4p_lab = proj_4p_lab + targ_4p_lab;
-   //adjust_final_state ( init_4p_lab );
+   adjust_final_state ( init_4p_lab );
 
 // clean up the primary neutron
-
-theResult.SetStatusChange(stopAndKill);
-
-//for(int x=0; x<theResult.GetNumberOfSecondaries(); x++)
-//    {
-//        delete theResult.GetSecondary(x)->GetParticle();
-//    }
-//    theResult.Clear();
+  theResult.SetStatusChange(stopAndKill);
 }

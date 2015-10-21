@@ -108,13 +108,20 @@
 
     G4int all=0, nPrompt=0, nDelayed=0;
     SampleNeutronMult(all, nPrompt, nDelayed, aTrack.GetKineticEnergy(), 0);
+    if(nPrompt==0&&nDelayed==0) nPrompt=all;
 
     G4double * theDecayConst = new double[nDelayed];
     G4int i;
-    G4DynamicParticleVector * aResult = new G4DynamicParticleVector;
     G4ReactionProduct boosted;
     boosted.Lorentz(theNeutron, theTarget);
     G4double eKinetic = boosted.GetKineticEnergy();
+
+    theNeutronAngularDis.SetNeutron(theNeutron);
+    theNeutronAngularDis.SetTarget(theTarget);
+
+    //Build Photons
+    G4DynamicParticleVector * thePhotons;
+    thePhotons = GetPhotons();
 
 // Build neutrons
     G4ReactionProduct * theNeutrons = new G4ReactionProduct[nPrompt+nDelayed];
@@ -150,16 +157,20 @@
       G4DynamicParticle * dp = new G4DynamicParticle;
       dp->SetDefinition(theNeutrons[i].GetDefinition());
       dp->SetMomentum(theNeutrons[i].GetMomentum());
-      aResult->push_back(dp);
+      theResult.AddSecondary(dp);
    }
    delete [] theNeutrons;
 // return the result
 
-    for(i=0; i<G4int(aResult->size()); i++)
+    if(thePhotons!=0)
+   {
+     G4int nPhotons = thePhotons->size();
+     for(i=0; i<nPhotons; i++)
      {
-       theResult.AddSecondary(aResult->operator[](i));
+       theResult.AddSecondary(thePhotons->operator[](i));
      }
-     delete aResult;
+     delete thePhotons;
+   }
 
      for(i=nPrompt; i<nPrompt+nDelayed; i++)
      {

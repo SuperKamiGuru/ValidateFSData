@@ -33,11 +33,11 @@
 #include "G4HadFinalState.hh"
 #include "VFDNeutronHPFinalState.hh"
 #include "G4NeutronHPAngular.hh"
-#include "G4NeutronHPEnergyDistribution.hh"
-#include "VFDNeutronHPEnAngCorrelation.hh"
+#include "VFDNeutronHPEnergyDistribution.hh"
+#include "G4NeutronHPEnAngCorrelation.hh"
 #include "VFDNeutronHPPhotonDist.hh"
 #include "G4NeutronHPDeExGammas.hh"
-#include "IsotopeMass.hh"
+#include "G4IonTable.hh"
 
 class VFDNeutronHPInelasticCompFS : public VFDNeutronHPFinalState
 {
@@ -83,6 +83,7 @@ class VFDNeutronHPInelasticCompFS : public VFDNeutronHPFinalState
   virtual G4NeutronHPVector * GetXsec() { return theXsection[50]; }
   G4int SelectExitChannel(G4double eKinetic);
   void CompositeApply(const G4HadProjectile & theTrack, G4ParticleDefinition * aHadron);
+  void two_body_reaction ( G4DynamicParticle* proj, G4DynamicParticle* targ, G4DynamicParticle* hadron, G4double mu );
   inline void InitDistributionInitialState(G4ReactionProduct & aNeutron,
                                            G4ReactionProduct & aTarget,
                                            G4int it)
@@ -146,9 +147,9 @@ class VFDNeutronHPInelasticCompFS : public VFDNeutronHPFinalState
   protected:
 
   G4NeutronHPVector * theXsection[51];
-  G4NeutronHPEnergyDistribution * theEnergyDistribution[51];
+  VFDNeutronHPEnergyDistribution * theEnergyDistribution[51];
   G4NeutronHPAngular * theAngularDistribution[51];
-  VFDNeutronHPEnAngCorrelation * theEnergyAngData[51];
+  G4NeutronHPEnAngCorrelation * theEnergyAngData[51];
 
   VFDNeutronHPPhotonDist * theFinalStatePhotons[51];
 

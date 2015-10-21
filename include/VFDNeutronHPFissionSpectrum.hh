@@ -25,83 +25,82 @@
 //
 //
 //
- // Hadronic Process: Very Low Energy Neutron X-Sections
- // original by H.P. Wellisch, TRIUMF, 14-Feb-97
- // Builds and has the Cross-section data for one material.
+#ifndef G4NeutronHPFissionSpectrum_h
+#define G4NeutronHPFissionSpectrum_h 1
 
-#ifndef VFDNeutronHPChannelList_h
-#define VFDNeutronHPChannelList_h 1
+#include <fstream>
+#include <CLHEP/Units/SystemOfUnits.h>
 
 #include "globals.hh"
-#include "VFDNeutronHPChannel.hh"
-#include "G4StableIsotopes.hh"
+#include "G4ios.hh"
+#include "Randomize.hh"
+#include "G4NeutronHPVector.hh"
+#include "G4VNeutronHPEDis.hh"
 
-class G4Element;
-class G4HadFinalState;
-class G4HadProjectile;
-class VFDNeutronHPFinalState;
+// we will need a List of these .... one per term.
 
-class VFDNeutronHPChannelList
+class VFDNeutronHPFissionSpectrum : public G4VNeutronHPEDis
 {
-
   public:
-
-  VFDNeutronHPChannelList(G4int n);
-
-  VFDNeutronHPChannelList();
-
-  void Init(G4int n);
-
-  ~VFDNeutronHPChannelList();
-
-  G4HadFinalState * ApplyYourself(const G4Element * theElement, const G4HadProjectile & aTrack);
-
-  void Init(G4Element * anElement, const G4String & dirName);
-
-  void Register(VFDNeutronHPFinalState *theFS, const G4String &aName);
-
-  inline G4double GetXsec(G4double anEnergy)
+  VFDNeutronHPFissionSpectrum()
   {
-    G4double result=0;
-    G4int i;
-    for(i=0; i<nChannels; i++)
+    expm1 = std::exp(-1.);
+  }
+  ~VFDNeutronHPFissionSpectrum()
+  {
+  }
+
+  inline void Init(std::istream & aDataFile)
+  {
+    theFractionalProb.Init(aDataFile, CLHEP::eV);
+    theThetaDist.Init(aDataFile, CLHEP::eV);
+  }
+
+  inline G4double GetFractionalProbability(G4double anEnergy)
+  {
+    return theFractionalProb.GetY(anEnergy);
+  }
+
+  inline G4double Sample(G4double anEnergy)
+  {
+    G4double theta = theThetaDist.GetY(anEnergy);
+    // here we need to sample Maxwells distribution, if
+    // need be.
+    G4double result, cut;
+    G4double range =5/CLHEP::eV;
+    if(theta>range)
     {
-      result+=std::max(0., theChannels[i]->GetXsec(anEnergy));
+        G4cout << "Error theta exceeds our set maximum energy value of range=5MeV" << G4endl;
     }
+    G4double max = Maxwell((theta)/2., theta);
+    G4double value;
+    do
+    {
+      result = range*G4UniformRand();
+      value = Maxwell(result, theta);
+      cut = G4UniformRand();
+    }
+    while(cut > value/max);
     return result;
   }
 
-  inline G4int GetNumberOfChannels() { return nChannels; }
-
-  inline G4bool HasDataInAnyFinalState()
-  {
-    G4bool result = false;
-    G4int i;
-    for(i=0; i<nChannels; i++)
-    {
-      if(theChannels[i]->HasDataInAnyFinalState()) result = true;
-    }
-    return result;
-  }
-  inline void RestartRegistration()
-  {
-    allChannelsCreated = true;
-    theInitCount = 0;
-  }
   private:
 
-  static G4ThreadLocal G4int trycounter;
-  VFDNeutronHPChannel ** theChannels;
-  G4int nChannels;
-  G4String theDir;
-  G4Element * theElement;
+  // this is the function to sample from.
+  inline G4double Maxwell(G4double anEnergy, G4double theta)
+  {
+    G4double result = std::sqrt(anEnergy)*std::exp(-anEnergy/theta);
+    return result;
+  }
 
-  G4bool allChannelsCreated;
-  G4int theInitCount;
+  private:
 
-  G4StableIsotopes theStableOnes;
+  G4double expm1;
 
-  G4HadFinalState unChanged;
+  G4NeutronHPVector theFractionalProb;
+
+  G4NeutronHPVector theThetaDist;
+
 };
 
 #endif

@@ -103,10 +103,12 @@ G4HadFinalState * VFDNeutronHPFissionBaseFS::ApplyYourself(const G4HadProjectile
     if(!HasFSData()) { return 0; }
 
     G4int i;
-    G4DynamicParticleVector * aResult = new G4DynamicParticleVector;
     G4ReactionProduct boosted;
     boosted.Lorentz(theNeutron, theTarget);
     G4double eKinetic = boosted.GetKineticEnergy();
+
+    theAngularDistribution.SetNeutron(theNeutron);
+    theAngularDistribution.SetTarget(theTarget);
 
 // Build neutrons
     G4ReactionProduct * theNeutrons = new G4ReactionProduct[nPrompt];
@@ -135,15 +137,9 @@ G4HadFinalState * VFDNeutronHPFissionBaseFS::ApplyYourself(const G4HadProjectile
       G4DynamicParticle * it = new G4DynamicParticle;
       it->SetDefinition(theNeutrons[i].GetDefinition());
       it->SetMomentum(theNeutrons[i].GetMomentum());
-      aResult->push_back(it);
+      theResult.AddSecondary(it);
    }
    delete [] theNeutrons;
-
-    for(i=0; i<G4int(aResult->size()); i++)
-     {
-       theResult.AddSecondary(aResult->operator[](i));
-     }
-     delete aResult;
 
 //    for(int x=0; x<theResult.GetNumberOfSecondaries(); x++)
 //    {

@@ -22,6 +22,29 @@ endif()
 include(${Geant4_USE_FILE})
 add_definitions(-fpermissive)
 
+# Parallel processing using TOP-C
+option(TOPC_USE "Use TOP-C parallel architecture" OFF)
+option(TOPC_USE_SEQ "Use TOP-C in sequential mode" OFF)
+if(TOPC_USE)
+  if(TOPC_USE_SEQ)
+    set(PARMODE "--seq")
+  else()
+    set(PARMODE "--mpi")
+  endif()
+
+  add_definitions(-DTOPC_USE=1)
+  # Get TOP-C libraries
+  execute_process(COMMAND "topc-config" ${PARMODE} "--libs"
+          OUTPUT_VARIABLE TOPC_LIBS)
+
+  # Remove trailing whitespace
+  string(STRIP ${TOPC_LIBS} TOPC_LIBS)
+
+  # Get TOP-C compiler flags
+  execute_process(COMMAND "topc-config" ${PARMODE} "--cflags"
+          OUTPUT_VARIABLE TOPC_CFLAGS)
+endif()
+
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
@@ -33,12 +56,11 @@ file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh
            ${PROJECT_SOURCE_DIR}/include/*.h)
 
-
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
 #
 add_executable(valFSData ValidateFSData.cc ${sources} ${headers})
-target_link_libraries(valFSData ${Geant4_LIBRARIES})
+target_link_libraries(valFSData ${Geant4_LIBRARIES} ${TOPC_LIBS})
 
 
 #----------------------------------------------------------------------------

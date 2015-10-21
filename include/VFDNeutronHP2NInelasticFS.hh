@@ -33,8 +33,8 @@
 #include "G4HadFinalState.hh"
 #include "VFDNeutronHPInelasticBaseFS.hh"
 #include "G4NeutronHPAngular.hh"
-#include "G4NeutronHPEnergyDistribution.hh"
-#include "VFDNeutronHPEnAngCorrelation.hh"
+#include "VFDNeutronHPEnergyDistribution.hh"
+#include "G4NeutronHPEnAngCorrelation.hh"
 #include "VFDNeutronHPPhotonDist.hh"
 
 class VFDNeutronHP2NInelasticFS : public VFDNeutronHPInelasticBaseFS

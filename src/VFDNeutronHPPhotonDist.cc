@@ -390,23 +390,11 @@ G4int maxEnergyIndex = 0;
                         it = photons_e.begin() ; it < photons_e.end() ; it++ )
                     {
                        thePhotons->operator[](count)->SetKineticEnergy( *it );
+                       count++;
                     }
-                    //G4cout << "OK " << actualMult[0] << " j " << j << " total photons E  "
-                    //          << std::accumulate( photons_e.begin() , photons_e.end() , 0.0 )/eV << " ratio " << std::accumulate( photons_e.begin() , photons_e.end() , 0.0 ) / maximumE
-                    //          << G4endl;
 
                     break;
                  }
-                 G4cout << "NeutronHPPhotonDist could not find fitted energy set for multiplicity of " <<  actualMult[0] << "." << G4endl;
-                 G4cout << "NeutronHPPhotonDist will use the best set." << G4endl;
-                 for ( std::vector< G4double >::iterator
-                     it = photons_e_best.begin() ; it < photons_e_best.end() ; it++ )
-                 {
-                     thePhotons->operator[](count)->SetKineticEnergy( *it );
-                 }
-                 //G4cout << "Not Good " << actualMult[0] << " j " << j << " total photons E  "
-                 //       << best/eV << " ratio " << best / maximumE
-                 //       << G4endl;
                }
                // TKDB
                delete temp;
@@ -415,7 +403,6 @@ G4int maxEnergyIndex = 0;
  	    {
                thePhotons->operator[](count)->SetKineticEnergy(energy[i]);
 	    }
-	    count++;
 	    if(count    > nSecondaries)  throw G4HadronicException(__FILE__, __LINE__, "VFDNeutronHPPhotonDist::GetPhotons inconsistancy");
         }
 

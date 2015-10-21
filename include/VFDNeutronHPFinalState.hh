@@ -70,7 +70,7 @@ public:
     return 0;
   };
 
-  // of course this would better be Done templating VFDNeutronHPChannel...,
+  // of course this would better be Done templating G4NeutronHPChannel...,
   // but due to peculiarities of the DEC compiler, this way it
   // is easier to maintain.
   virtual VFDNeutronHPFinalState * New() = 0;

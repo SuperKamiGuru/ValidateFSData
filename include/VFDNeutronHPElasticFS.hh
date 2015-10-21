@@ -40,6 +40,7 @@
 #include "G4NeutronHPFastLegendre.hh"
 #include "G4NeutronHPInterpolator.hh"
 #include "G4NeutronHPNames.hh"
+#include "G4IonTable.hh"
 
 class VFDNeutronHPElasticFS : public VFDNeutronHPFinalState
 {

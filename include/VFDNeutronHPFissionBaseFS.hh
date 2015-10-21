@@ -34,9 +34,10 @@
 #include "VFDNeutronHPFinalState.hh"
 #include "G4NeutronHPNames.hh"
 #include "G4NeutronHPVector.hh"
-#include "G4NeutronHPEnergyDistribution.hh"
+#include "VFDNeutronHPEnergyDistribution.hh"
 #include "G4NeutronHPAngular.hh"
 #include "G4Track.hh"
+#include "G4IonTable.hh"
 
 class VFDNeutronHPFissionBaseFS : public VFDNeutronHPFinalState
 {
@@ -104,7 +105,7 @@ class VFDNeutronHPFissionBaseFS : public VFDNeutronHPFinalState
 
 
   G4NeutronHPVector * theXsection;
-  G4NeutronHPEnergyDistribution theEnergyDistribution;
+  VFDNeutronHPEnergyDistribution theEnergyDistribution;
   G4NeutronHPAngular theAngularDistribution;
 
   G4ReactionProduct theNeutron;
